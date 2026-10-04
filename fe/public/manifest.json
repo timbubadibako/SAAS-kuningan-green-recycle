@@ -1,0 +1,24 @@
+{
+  "name": "Green Cycle Kuningan - ERP Timbangan Rongsok",
+  "short_name": "GC Kuningan",
+  "description": "Sistem ERP & Kasir Timbangan Digital Terintegrasi 4 Gudang",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#14532d",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

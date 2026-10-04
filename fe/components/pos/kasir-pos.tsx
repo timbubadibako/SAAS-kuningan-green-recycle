@@ -1,6 +1,4 @@
-'use client';
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Scale,
   Printer,
@@ -13,6 +11,8 @@ import {
   Banknote,
   DollarSign,
   Camera,
+  History,
+  Trash2,
 } from 'lucide-react';
 import { Product, ScaleTransaction, ScaleTransactionItem } from '../../types';
 import { useScaleSerial } from '../../lib/hardware/use-scale-serial';
@@ -64,6 +64,70 @@ export function KasirPos({ products, warehouseId, warehouseName, onSaveTransacti
 
   // Pembayaran & Estimasi Uang Kasir
   const [cashGiven, setCashGiven] = useState<number>(0);
+
+  // State Deteksi Pulih Mati Lampu (Power Outage Recovery Banner)
+  const [recoveredDraftFound, setRecoveredDraftFound] = useState<boolean>(false);
+  const draftStorageKey = `gc_kuningan_cart_draft_wh_${warehouseId}`;
+
+  // 1. Cek draft tersimpan saat inisialisasi
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(draftStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.cartItems) && parsed.cartItems.length > 0) {
+          setRecoveredDraftFound(true);
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal membaca draft lokal:', e);
+    }
+  }, [draftStorageKey]);
+
+  // 2. Auto-save keranjang setiap kali cartItems atau sellerName berubah
+  useEffect(() => {
+    try {
+      if (cartItems.length > 0) {
+        localStorage.setItem(
+          draftStorageKey,
+          JSON.stringify({
+            cartItems,
+            sellerName,
+            isCustomSeller,
+            customSellerName,
+            isPartner,
+            timestamp: new Date().toISOString(),
+          })
+        );
+      } else {
+        localStorage.removeItem(draftStorageKey);
+      }
+    } catch (e) {
+      console.warn('Gagal menyimpan auto-draft:', e);
+    }
+  }, [cartItems, sellerName, isCustomSeller, customSellerName, isPartner, draftStorageKey]);
+
+  const handleRestoreDraft = () => {
+    try {
+      const saved = localStorage.getItem(draftStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.cartItems) setCartItems(parsed.cartItems);
+        if (parsed.sellerName) setSellerName(parsed.sellerName);
+        if (parsed.isCustomSeller !== undefined) setIsCustomSeller(parsed.isCustomSeller);
+        if (parsed.customSellerName) setCustomSellerName(parsed.customSellerName);
+        if (parsed.isPartner !== undefined) setIsPartner(parsed.isPartner);
+      }
+    } catch (e) {
+      console.warn('Gagal memulihkan draft:', e);
+    }
+    setRecoveredDraftFound(false);
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem(draftStorageKey);
+    setRecoveredDraftFound(false);
+  };
 
   // Detail produk aktif
   const activeProduct = products.find((p) => p.id === selectedProductId) || products[0];
@@ -163,11 +227,46 @@ export function KasirPos({ products, warehouseId, warehouseName, onSaveTransacti
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 font-sans">
-      {/* Kolom Kiri: Layar Timbangan Digital & Input */}
-      <div className="space-y-5 lg:col-span-7">
-        {/* Timbangan Box */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+    <div className="space-y-4 font-sans">
+      {/* Banner Pemulihan Mati Listrik / Crash Recovery */}
+      {recoveredDraftFound && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-sm text-slate-900 animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-amber-200 p-2 text-amber-900">
+              <History className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs font-black text-amber-950 uppercase tracking-tight">
+                Draft Transaksi Ditemukan (Proteksi Mati Listrik)
+              </div>
+              <div className="text-[11px] text-amber-800 font-medium">
+                Ada nota timbangan yang belum diselesaikan sebelum browser tertutup atau mati lampu.
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={handleRestoreDraft}
+              className="flex-1 sm:flex-none rounded-xl bg-emerald-800 hover:bg-emerald-900 px-3.5 py-1.5 text-xs font-black text-white shadow-xs transition-all"
+            >
+              Pulihkan Nota
+            </button>
+            <button
+              onClick={handleDiscardDraft}
+              className="flex-1 sm:flex-none rounded-xl bg-white hover:bg-slate-100 border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 transition-all"
+            >
+              Buang
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* Kolom Kiri: Layar Timbangan Digital & Input */}
+        <div className="space-y-5 lg:col-span-7">
+          {/* Timbangan Box */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <Scale className="h-5 w-5 text-emerald-800" />
@@ -575,5 +674,6 @@ export function KasirPos({ products, warehouseId, warehouseName, onSaveTransacti
         </div>
       </div>
     </div>
+  </div>
   );
 }

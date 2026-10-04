@@ -37,6 +37,8 @@ import {
   FactorySale,
 } from '../types';
 import { Sparkles } from 'lucide-react';
+import { OfflineSyncService } from '../lib/db/sync-service';
+import { localDB } from '../lib/db/dexie-db';
 
 export default function Home() {
   const [activeRole, setActiveRole] = useState<UserRole>('ADMIN');
@@ -57,6 +59,37 @@ export default function Home() {
 
   const activeWarehouse = MOCK_WAREHOUSES.find((w) => w.id === activeWarehouseId) || MOCK_WAREHOUSES[0];
 
+  // Inisialisasi: Baca transaksi lokal dari IndexedDB & sync saat online
+  React.useEffect(() => {
+    async function loadLocalDB() {
+      try {
+        const localTxs = await localDB.scaleTransactions.toArray();
+        if (localTxs.length > 0) {
+          // Gabungkan data lokal dengan mock
+          setTransactions((prev) => {
+            const ids = new Set(localTxs.map((t) => t.id));
+            const merged = [...localTxs, ...prev.filter((t) => !ids.has(t.id))];
+            return merged;
+          });
+        }
+      } catch (e) {
+        console.warn('Gagal membaca IndexedDB lokal:', e);
+      }
+    }
+
+    loadLocalDB();
+
+    // Auto-sync antrean tertunda jika terhubung internet
+    const handleOnline = () => {
+      OfflineSyncService.syncPendingTransactions().then((count) => {
+        if (count > 0) console.log(`[OfflineSync] Berhasil upload ${count} transaksi tertunda ke Supabase`);
+      });
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
+
   // Kas keluar belanja timbangan pada shift aktif gudang ini
   const totalExpenseToday = transactions
     .filter((t) => t.warehouseId === activeWarehouseId)
@@ -68,8 +101,12 @@ export default function Home() {
     .reduce((acc, s) => acc + s.totalRevenue, 0);
 
   // Handlers
-  const handleSaveTransaction = (newTx: ScaleTransaction) => {
+  const handleSaveTransaction = async (newTx: ScaleTransaction) => {
+    // 1. Simpan ke local state UI
     setTransactions((prev) => [newTx, ...prev]);
+
+    // 2. Simpan aman ke IndexedDB + Sync Supabase
+    await OfflineSyncService.saveScaleTransaction(newTx);
   };
 
   const handleAddSale = (newSale: FactorySale) => {

@@ -175,39 +175,28 @@ export function Sidebar({
           </select>
         </div>
 
-        {/* Role Switcher */}
+        {/* Status Akses User */}
         <div>
           <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between mb-1.5">
             <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
-              <span>Simulasi Role</span>
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-800" />
+              <span>Akses Terverifikasi</span>
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">RBAC</span>
+            <span className="text-[10px] text-slate-400 font-mono">SUPABASE</span>
           </label>
-          <div className="grid grid-cols-2 gap-1.5 bg-slate-200/60 p-1 rounded-lg border border-slate-200">
-            <button
-              onClick={() => {
-                setActiveRole('ADMIN');
-                if (activeTab === 'owner') setActiveTab('pos');
-              }}
-              className={`py-1.5 text-xs font-bold rounded-md transition-all ${
-                activeRole === 'ADMIN'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              ADMIN (Kasir)
-            </button>
-            <button
-              onClick={() => setActiveRole('OWNER')}
-              className={`py-1.5 text-xs font-bold rounded-md transition-all ${
+          <div className="flex items-center justify-between rounded-lg bg-slate-100 px-3 py-2 border border-slate-200">
+            <span className="text-xs font-black text-slate-800 uppercase tracking-tight">
+              {activeRole === 'OWNER' ? 'Owner / Pimpinan' : 'Kasir Gudang'}
+            </span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-bold font-mono ${
                 activeRole === 'OWNER'
-                  ? 'bg-emerald-900 text-amber-300 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                  : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
               }`}
             >
-              OWNER (Bos)
-            </button>
+              {activeRole}
+            </span>
           </div>
         </div>
       </div>
