@@ -17,6 +17,7 @@ import {
 import { Product, ScaleTransaction, ScaleTransactionItem } from '../../types';
 import { useScaleSerial } from '../../lib/hardware/use-scale-serial';
 import { buildThermalReceiptESC, printThermalReceipt } from '../../lib/hardware/escpos-builder';
+import { useToast } from '../ui/toast-notification';
 
 interface KasirPosProps {
   products: Product[];
@@ -26,6 +27,7 @@ interface KasirPosProps {
 }
 
 export function KasirPos({ products, warehouseId, warehouseName, onSaveTransaction }: KasirPosProps) {
+  const { success, warning } = useToast();
   const {
     currentWeight,
     isConnected,
@@ -215,10 +217,14 @@ export function KasirPos({ products, warehouseId, warehouseName, onSaveTransacti
     printThermalReceipt(receiptText);
 
     if (requiresApproval) {
-      alert(
-        `PERINGATAN: Transaksi Jumbo > Rp 10.000.000 (Total: Rp ${totalBillToPay.toLocaleString(
-          'id-ID'
-        )}). Struk dicetak dan ditandai membutuhkan approval PIN Owner.`
+      warning(
+        `Transaksi Jumbo > Rp 10.000.000 (Total: Rp ${totalBillToPay.toLocaleString('id-ID')}). Membutuhkan approval Owner.`,
+        'Approval Owner Diperlukan'
+      );
+    } else {
+      success(
+        `Nota ${newTx.invoiceNumber} (Rp ${totalBillToPay.toLocaleString('id-ID')}) selesai & struk dicetak.`,
+        'Transaksi Berhasil'
       );
     }
 

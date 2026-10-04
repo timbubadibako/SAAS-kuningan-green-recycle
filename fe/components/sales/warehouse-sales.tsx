@@ -12,6 +12,8 @@ interface WarehouseSalesProps {
   onAddSale: (sale: FactorySale) => void;
 }
 
+import { useToast } from '../ui/toast-notification';
+
 export function WarehouseSalesManagement({
   currentWarehouseId,
   warehouseName,
@@ -19,6 +21,7 @@ export function WarehouseSalesManagement({
   salesList,
   onAddSale,
 }: WarehouseSalesProps) {
+  const { success } = useToast();
   const [buyerType, setBuyerType] = useState<BuyerType>('PEMBELI_BIASA');
   const [buyerName, setBuyerName] = useState<string>('Bengkel Las Mandiri');
   const [productId, setProductId] = useState<string>(products[0]?.id || '');
@@ -56,7 +59,10 @@ export function WarehouseSalesManagement({
     };
 
     onAddSale(newSale);
-    alert(`Penjualan berhasil dicatat! Total Kas Masuk: Rp ${totalRevenue.toLocaleString('id-ID')} (${paymentMethod === 'CASH_LACI' ? 'Masuk Laci Kasir' : 'Transfer Bank'})`);
+    success(
+      `Kas Masuk Rp ${totalRevenue.toLocaleString('id-ID')} (${paymentMethod === 'CASH_LACI' ? 'Masuk Laci Kasir' : 'Transfer Bank'})`,
+      'Penjualan Berhasil Dicatat'
+    );
   };
 
   return (

@@ -39,8 +39,14 @@ import {
 import { Sparkles } from 'lucide-react';
 import { OfflineSyncService } from '../lib/db/sync-service';
 import { localDB } from '../lib/db/dexie-db';
+import { LoginPanel } from '../components/auth/login-panel';
+import { useToast } from '../components/ui/toast-notification';
 
 export default function Home() {
+  const { success, info } = useToast();
+  
+  // Auth State
+  const [currentUser, setCurrentUser] = useState<{ fullName: string; role: UserRole; username: string } | null>(null);
   const [activeRole, setActiveRole] = useState<UserRole>('ADMIN');
   const [activeWarehouseId, setActiveWarehouseId] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<string>('pos');
@@ -59,8 +65,19 @@ export default function Home() {
 
   const activeWarehouse = MOCK_WAREHOUSES.find((w) => w.id === activeWarehouseId) || MOCK_WAREHOUSES[0];
 
-  // Inisialisasi: Baca transaksi lokal dari IndexedDB & sync saat online
+  // Inisialisasi: Cek session user & baca transaksi lokal dari IndexedDB
   React.useEffect(() => {
+    try {
+      const savedUser = localStorage.getItem('gc_kuningan_auth_user');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        setCurrentUser(parsed);
+        setActiveRole(parsed.role);
+      }
+    } catch (e) {
+      console.warn('Gagal membaca sesi lokal:', e);
+    }
+
     async function loadLocalDB() {
       try {
         const localTxs = await localDB.scaleTransactions.toArray();
@@ -82,13 +99,20 @@ export default function Home() {
     // Auto-sync antrean tertunda jika terhubung internet
     const handleOnline = () => {
       OfflineSyncService.syncPendingTransactions().then((count) => {
-        if (count > 0) console.log(`[OfflineSync] Berhasil upload ${count} transaksi tertunda ke Supabase`);
+        if (count > 0) info(`Berhasil sinkronisasi ${count} transaksi tertunda ke Supabase`);
       });
     };
 
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
-  }, []);
+  }, [info]);
+
+  const handleLoginSuccess = (user: { fullName: string; role: UserRole; username: string }) => {
+    setCurrentUser(user);
+    setActiveRole(user.role);
+    localStorage.setItem('gc_kuningan_auth_user', JSON.stringify(user));
+    success(`Selamat datang, ${user.fullName}`, 'Login Berhasil');
+  };
 
   // Kas keluar belanja timbangan pada shift aktif gudang ini
   const totalExpenseToday = transactions
@@ -117,7 +141,7 @@ export default function Home() {
     const newShift: CashShift = {
       id: `shift-${Date.now()}`,
       warehouseId: activeWarehouseId,
-      cashierId: activeRole === 'ADMIN' ? 'Siti Rahmawati (Kasir)' : 'David (Owner)',
+      cashierId: currentUser ? currentUser.fullName : 'Kasir Gudang',
       openedAt: new Date().toISOString(),
       closedAt: null,
       initialCash,
@@ -127,6 +151,7 @@ export default function Home() {
       notes,
     };
     setActiveShift(newShift);
+    success(`Shift kasir dibuka dengan modal Rp${initialCash.toLocaleString('id-ID')}`, 'Shift Dibuka');
   };
 
   const handleCloseShift = (actualClosingCash: number, notes: string) => {
@@ -135,8 +160,9 @@ export default function Home() {
     const diff = actualClosingCash - expected;
 
     setActiveShift(null);
-    alert(
-      `Shift Kasir Ditutup!\nModal Awal: Rp${activeShift.initialCash.toLocaleString('id-ID')}\nKas Masuk Jual Tunai: Rp${totalCashInSalesToday.toLocaleString('id-ID')}\nKas Keluar Belanja: Rp${totalExpenseToday.toLocaleString('id-ID')}\nFisik Kas: Rp${actualClosingCash.toLocaleString('id-ID')}\nSelisih: Rp${diff.toLocaleString('id-ID')}`
+    info(
+      `Fisik Kas: Rp${actualClosingCash.toLocaleString('id-ID')} | Selisih: Rp${diff.toLocaleString('id-ID')}`,
+      'Shift Kasir Ditutup'
     );
   };
 
@@ -225,7 +251,7 @@ export default function Home() {
     setTransactions((prev) =>
       prev.map((t) => (t.id === txId ? { ...t, isApprovedByOwner: true } : t))
     );
-    alert('Transaksi Jumbo disetujui Owner.');
+    success('Transaksi Jumbo disetujui Owner dengan otorisasi PIN.', 'Approval Berhasil');
   };
 
   const handleUpdateMarketBenchmark = (prodId: string, newBenchmark: number) => {
@@ -257,6 +283,11 @@ export default function Home() {
     }
   };
 
+  // Jika belum login, tampilkan Panel Login
+  if (!currentUser) {
+    return <LoginPanel onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-slate-100 text-slate-900 font-sans antialiased">
       {/* Sidebar Daylight Theme */}
@@ -274,13 +305,11 @@ export default function Home() {
       {/* Main Content Area */}
       <div className="flex-1 h-screen flex flex-col min-w-0 overflow-hidden bg-slate-50/80">
         {/* Top Navbar Header */}
-        <header className="h-14 backdrop-blur-md border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0 z-20 bg-white/90 shadow-2xs">
-          <div className="flex items-center space-x-3">
-            <span className="text-xs font-bold text-emerald-950 uppercase tracking-tight">Green Cycle Kuningan /</span>
-            <span className="text-xs font-extrabold text-slate-800">{getTabTitle()}</span>
-            <span className="rounded-lg bg-emerald-50 px-2.5 py-0.5 text-[11px] text-emerald-900 font-bold border border-emerald-200">
-              {activeWarehouse.name}
-            </span>
+        <header className="h-14 backdrop-blur-md border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0 z-20 bg-white shadow-2xs">
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-medium text-slate-400">Green Cycle Kuningan</span>
+            <span className="text-xs text-slate-300">/</span>
+            <span className="text-sm font-semibold text-slate-800 tracking-tight">{getTabTitle()}</span>
           </div>
 
           <div className="flex items-center space-x-3">
