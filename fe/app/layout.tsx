@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { PwaRegister } from "../components/pwa-register";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,13 +13,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-import { PwaRegister } from "../components/pwa-register";
+export const viewport: Viewport = {
+  themeColor: "#14532d",
+};
 
 export const metadata: Metadata = {
   title: "Green Cycle Kuningan | Bersih, Hijau, Berkelanjutan",
   description: "Sistem ERP Timbangan Rongsok, Inventory 4 Gudang & Finansial - Bersih, Hijau, Berkelanjutan",
   manifest: "/manifest.json",
-  themeColor: "#14532d",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
